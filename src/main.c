@@ -881,21 +881,19 @@ int main(int argc, char *argv[])
         int hint_line_h = TTF_FontHeight(font_tiny);
         int bar_h = param_line_h + hint_line_h + pad * 4;
 
-        /* --- Full-screen preview --- */
+        /* --- Full-screen preview (bar overlays on top) --- */
         if (state.gl_initialized) {
             SDL_Texture *tex = get_preview_as_sdl_texture(renderer);
             if (tex) {
-                /* Fill screen, leaving room for the bar */
-                int avail_h = sh - bar_h;
                 float aspect = (float)state.preview_w / (float)state.preview_h;
                 int dst_w = sw;
                 int dst_h = (int)(dst_w / aspect);
-                if (dst_h > avail_h) {
-                    dst_h = avail_h;
+                if (dst_h > sh) {
+                    dst_h = sh;
                     dst_w = (int)(dst_h * aspect);
                 }
                 int dst_x = (sw - dst_w) / 2;
-                int dst_y = (avail_h - dst_h) / 2;
+                int dst_y = (sh - dst_h) / 2;
 
                 SDL_Rect dst = { dst_x, dst_y, dst_w, dst_h };
                 SDL_RenderCopy(renderer, tex, NULL, &dst);
