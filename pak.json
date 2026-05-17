@@ -1,0 +1,20 @@
+{
+  "name": "Fugazi",
+  "version": "v0.1.0",
+  "type": "TOOL",
+  "description": "CRT shader tweaker with live preview. Adjust scanlines, glow, curvature, phosphor mask, vignette, brightness, and warmth in real-time. Installs directly to system for in-game use.",
+  "author": "Eric Reinsmidt",
+  "repo_url": "https://github.com/ericreinsmidt/nextui-fugazi",
+  "release_filename": "Fugazi.tg5040.pak.zip",
+  "platforms": [
+    "tg5040"
+  ],
+  "changelog": {
+    "v0.1.0": "Initial release. Full-screen live shader preview, 8 tunable parameters, one-button system install, clear to passthrough."
+  },
+  "screenshots": [
+    "assets/logo.png",
+    "assets/screenshots/before.png",
+    "assets/screenshots/after.png"
+  ]
+}

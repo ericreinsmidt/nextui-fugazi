@@ -1,0 +1,4 @@
+dist/
+ports/tg5040/pak/bin/
+.DS_Store
+*.o
