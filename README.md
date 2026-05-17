@@ -26,6 +26,13 @@ Built with [PakKit](https://github.com/ericreinsmidt/pakkit) and [Apostrophe](ht
 - **Minimal UI** — Full-screen preview with a semi-transparent bottom bar
 - **Optimized for Mali-G31** — No trig, no pow/exp, branchless math, 2-pass pipeline
 
+## Screenshots
+
+| Before | After |
+|:---:|:---:|
+| ![Before](assets/screenshots/before.png) | ![After](assets/screenshots/after.png) |
+| No shader effects | Curvature, scanlines, glow, vignette |
+
 ## How It Works
 
 Fugazi is a 2-pass GLSL shader designed for minarch (NextUI's emulator runtime):
