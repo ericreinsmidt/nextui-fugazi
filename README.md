@@ -6,7 +6,7 @@
 
 [![Release](https://img.shields.io/github/v/release/ericreinsmidt/nextui-fugazi?style=for-the-badge&color=cc5500)](https://github.com/ericreinsmidt/nextui-fugazi/releases)
 [![Downloads](https://img.shields.io/github/downloads/ericreinsmidt/nextui-fugazi/total?style=for-the-badge&color=cc5500)](https://github.com/ericreinsmidt/nextui-fugazi/releases)
-[![License](https://img.shields.io/github/license/ericreinsmidt/nextui-fugazi?style=for-the-badge&color=3366cc)](LICENSE)
+[![License](https://img.shields.io/github/license/ericreinsmidt/nextui-fugazi?style=for-the-badge&color=cc5500)](LICENSE)
 
 A CRT shader tweaker with live preview for [NextUI](https://github.com/LoveRetro/NextUI) on TrimUI handheld devices.
 
