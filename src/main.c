@@ -87,6 +87,7 @@ typedef struct {
     GLuint       gl_program_glow;
     GLuint       gl_program_scan;
     GLuint       gl_source_tex;
+    GLuint       gl_test_tex;       /* Generated test pattern texture */
     GLuint       gl_fbo;
     GLuint       gl_fbo_tex;
     GLuint       gl_output_tex;
@@ -94,9 +95,12 @@ typedef struct {
     int          preview_h;
     int          source_w;
     int          source_h;
+    int          test_w;
+    int          test_h;
     int          sim_input_w;
     int          sim_input_h;
     int          gl_initialized;
+    int          use_test_pattern;  /* Toggle: 0 = game screenshot, 1 = test pattern */
 } fugazi_state;
 
 static fugazi_state state;
@@ -488,6 +492,123 @@ static float get_param_value(const char *name)
     return 0.0f;
 }
 
+/* -----------------------------------------------------------------------
+ * Test pattern generator
+ *
+ * Creates a synthetic image designed to make each shader parameter clearly
+ * visible. Layout (top to bottom):
+ *   - Color bars (8 columns): shows phosphor mask & warmth
+ *   - Grid on dark background: shows curvature, scanlines, glow
+ *   - Brightness gradient: shows adaptive scanline behavior
+ *   - Bright circle on black: shows glow/bloom spread
+ * The whole image has content in corners so vignette is obvious.
+ * ----------------------------------------------------------------------- */
+
+static unsigned char *generate_test_pattern(int w, int h)
+{
+    unsigned char *pixels = calloc(w * h * 4, 1);
+    if (!pixels) return NULL;
+
+    /* Helper: set pixel (RGBA) */
+    #define TP_SET(px, py, r, g, b) do { \
+        if ((px) >= 0 && (px) < w && (py) >= 0 && (py) < h) { \
+            int _idx = ((py) * w + (px)) * 4; \
+            pixels[_idx] = (r); pixels[_idx+1] = (g); \
+            pixels[_idx+2] = (b); pixels[_idx+3] = 255; \
+        } \
+    } while(0)
+
+    /* --- Section 1: Color bars (top 25%) --- */
+    int bar_h = h / 4;
+    /* Classic 8-bar pattern: white, yellow, cyan, green, magenta, red, blue, black */
+    unsigned char bars[][3] = {
+        {255,255,255}, {255,255,0}, {0,255,255}, {0,255,0},
+        {255,0,255}, {255,0,0}, {0,0,255}, {0,0,0}
+    };
+    for (int y = 0; y < bar_h; y++) {
+        for (int x = 0; x < w; x++) {
+            int col = (x * 8) / w;
+            if (col > 7) col = 7;
+            TP_SET(x, y, bars[col][0], bars[col][1], bars[col][2]);
+        }
+    }
+
+    /* --- Section 2: Grid on dark background (25%-60%) --- */
+    int grid_y0 = bar_h;
+    int grid_y1 = (h * 60) / 100;
+    int grid_spacing = w / 32;
+    if (grid_spacing < 8) grid_spacing = 8;
+
+    /* Dark blue-gray background */
+    for (int y = grid_y0; y < grid_y1; y++) {
+        for (int x = 0; x < w; x++) {
+            TP_SET(x, y, 15, 15, 30);
+        }
+    }
+    /* Grid lines */
+    for (int y = grid_y0; y < grid_y1; y++) {
+        for (int x = 0; x < w; x++) {
+            int on_vline = ((x % grid_spacing) == 0);
+            int on_hline = (((y - grid_y0) % grid_spacing) == 0);
+            if (on_vline || on_hline) {
+                /* Brighter where lines cross */
+                if (on_vline && on_hline)
+                    TP_SET(x, y, 200, 200, 255);
+                else
+                    TP_SET(x, y, 80, 80, 160);
+            }
+        }
+    }
+
+    /* --- Section 3: Brightness gradient (60%-78%) --- */
+    int grad_y0 = grid_y1;
+    int grad_y1 = (h * 78) / 100;
+    for (int y = grad_y0; y < grad_y1; y++) {
+        for (int x = 0; x < w; x++) {
+            int v = (x * 255) / (w - 1);
+            TP_SET(x, y, v, v, v);
+        }
+    }
+
+    /* --- Section 4: Glow test — bright circle on black (78%-100%) --- */
+    int glow_y0 = grad_y1;
+    int cx = w / 2;
+    int cy = (glow_y0 + h) / 2;
+    int radius = (h - glow_y0) / 3;
+    for (int y = glow_y0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            int dx = x - cx;
+            int dy = y - cy;
+            int dist_sq = dx * dx + dy * dy;
+            int r_sq = radius * radius;
+            if (dist_sq < r_sq) {
+                /* Soft falloff toward edge */
+                float t = 1.0f - (float)dist_sq / (float)r_sq;
+                int v = (int)(255 * t * t);
+                TP_SET(x, y, v, v, v);
+            }
+        }
+    }
+
+    /* --- Corner markers (for vignette visibility) --- */
+    int mark = w / 20;
+    for (int y = 0; y < mark; y++) {
+        for (int x = 0; x < mark; x++) {
+            /* Top-left */
+            TP_SET(x, y, 255, 128, 0);
+            /* Top-right */
+            TP_SET(w - 1 - x, y, 0, 128, 255);
+            /* Bottom-left */
+            TP_SET(x, h - 1 - y, 0, 255, 128);
+            /* Bottom-right */
+            TP_SET(w - 1 - x, h - 1 - y, 255, 128, 255);
+        }
+    }
+
+    #undef TP_SET
+    return pixels;
+}
+
 static int init_gl_preview(SDL_Window *window, const char *image_path)
 {
     (void)window;
@@ -572,6 +693,22 @@ static int init_gl_preview(SDL_Window *window, const char *image_path)
 
     if (!state.gl_program_glow || !state.gl_program_scan) return -1;
 
+    /* Generate test pattern texture at source image resolution */
+    state.test_w = state.source_w;
+    state.test_h = state.source_h;
+    unsigned char *tp = generate_test_pattern(state.test_w, state.test_h);
+    if (tp) {
+        glGenTextures(1, &state.gl_test_tex);
+        glBindTexture(GL_TEXTURE_2D, state.gl_test_tex);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, state.test_w, state.test_h, 0,
+                     GL_RGBA, GL_UNSIGNED_BYTE, tp);
+        free(tp);
+    }
+
     state.gl_initialized = 1;
     return 0;
 }
@@ -601,7 +738,9 @@ static void render_preview(void)
     glEnableVertexAttribArray(tex_loc);
 
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, state.gl_source_tex);
+    GLuint active_tex = (state.use_test_pattern && state.gl_test_tex)
+                        ? state.gl_test_tex : state.gl_source_tex;
+    glBindTexture(GL_TEXTURE_2D, active_tex);
     glUniform1i(glGetUniformLocation(state.gl_program_glow, "Texture"), 0);
 
     set_uniform_vec2(state.gl_program_glow, "InputSize", tex_w, tex_h);
@@ -854,6 +993,12 @@ int main(int argc, char *argv[])
                     }
                     break;
 
+                case AP_BTN_X:
+                    if (!ev.repeated) {
+                        state.use_test_pattern = !state.use_test_pattern;
+                    }
+                    break;
+
                 default:
                     break;
             }
@@ -864,6 +1009,12 @@ int main(int argc, char *argv[])
         /* Render shader preview */
         if (state.gl_initialized) {
             render_preview();
+            /* Restore GL viewport to screen size — render_preview() sets it
+               to the preview texture dimensions for FBO rendering, and GL
+               viewport is global state. Without this, SDL's GL-backed
+               renderer uses the wrong viewport on screens that don't match
+               the preview image size (e.g. Smart Pro 1280×720). */
+            glViewport(0, 0, ap_get_screen_width(), ap_get_screen_height());
         }
 
         ap_clear_screen();
@@ -947,9 +1098,11 @@ int main(int argc, char *argv[])
             pakkit_hint hints[] = {
                 { .button = "B", .label = "Quit" },
                 { .button = "Y", .label = "Clear" },
+                { .button = "X", .label = state.use_test_pattern
+                    ? "Game Image" : "Test Pattern" },
                 { .button = "A", .label = "Install" },
             };
-            pakkit_draw_hints(hints, 3);
+            pakkit_draw_hints(hints, 4);
         }
 
         ap_present();
@@ -961,6 +1114,7 @@ int main(int argc, char *argv[])
         glDeleteProgram(state.gl_program_glow);
         glDeleteProgram(state.gl_program_scan);
         glDeleteTextures(1, &state.gl_source_tex);
+        if (state.gl_test_tex) glDeleteTextures(1, &state.gl_test_tex);
         glDeleteTextures(1, &state.gl_fbo_tex);
         glDeleteTextures(1, &state.gl_output_tex);
         glDeleteFramebuffers(1, &state.gl_fbo);

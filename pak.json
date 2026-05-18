@@ -1,6 +1,6 @@
 {
   "name": "Fugazi",
-  "version": "v0.1.1",
+  "version": "v0.2.0",
   "type": "TOOL",
   "description": "CRT shader tweaker with live preview. Adjust scanlines, glow, curvature, phosphor mask, vignette, brightness, and warmth in real-time. Installs directly to system for in-game use.",
   "author": "Eric Reinsmidt",
@@ -11,11 +11,14 @@
   ],
   "changelog": {
     "v0.1.0": "Initial release. Full-screen live shader preview, 8 tunable parameters, one-button system install, clear to passthrough.",
-    "v0.1.1": "Preview now fills entire screen with semi-transparent UI overlay."
+    "v0.1.1": "Preview now fills entire screen with semi-transparent UI overlay.",
+    "v0.2.0": "Built-in test pattern for tuning effects, Smart Pro widescreen support, X button toggles between game image and test pattern."
   },
   "screenshots": [
     "assets/logo.png",
     "assets/screenshots/before.png",
-    "assets/screenshots/after.png"
+    "assets/screenshots/after.png",
+    "assets/screenshots/test_pattern.png",
+    "assets/screenshots/smart_pro.png"
   ]
 }

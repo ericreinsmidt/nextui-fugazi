@@ -17,6 +17,7 @@ Built with [PakKit](https://github.com/ericreinsmidt/pakkit) and [Apostrophe](ht
 ## Features
 
 - **Live shader preview** — Full-screen game screenshot rendered through the shader in real-time as you adjust parameters
+- **Built-in test pattern** — Toggle to a calibration image with color bars, grid, gradient, and glow test for precise tuning
 - **8 tunable parameters** — Curvature, glow, scanlines, gap darkness, phosphor mask, vignette, brightness, warmth
 - **One-button install** — Writes shader directly to system for immediate in-game use
 - **Clear to passthrough** — Reset all effects to zero with a single button press
@@ -32,6 +33,11 @@ Built with [PakKit](https://github.com/ericreinsmidt/pakkit) and [Apostrophe](ht
 |:---:|:---:|
 | ![Before](assets/screenshots/before.png) | ![After](assets/screenshots/after.png) |
 | No shader effects | Curvature, scanlines, glow, vignette |
+
+| Test Pattern | Smart Pro |
+|:---:|:---:|
+| ![Test Pattern](assets/screenshots/test_pattern.png) | ![Smart Pro](assets/screenshots/smart_pro.png) |
+| Built-in calibration image | Widescreen support |
 
 ## How It Works
 
@@ -49,6 +55,7 @@ The app lets you adjust all parameters with a live preview, then install the res
 | Up/Down | Cycle through parameters |
 | Left/Right | Adjust value |
 | A | Install shader to system |
+| X | Toggle test pattern / game image |
 | Y | Clear all effects (passthrough) |
 | B | Quit |
 
